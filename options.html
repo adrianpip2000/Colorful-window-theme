@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <meta charset="utf-8">
+        <link rel="stylesheet" href="/options.css"/>
+        <title>Colorful Window Theme - Options</title>
+    </head>
+
+<body>
+    <div id="heading">Preferences</div>
+    <!-- ids for pref input elements must equal pref name -->
+
+    <fieldset>
+        <legend>Colors</legend>
+        
+        <div class="par">
+            <input id="pref_use_darkmode" type="checkbox" />&nbsp;Use dark mode
+        </div>
+        <div class="par">
+            <input id="pref_use_custom_colors" type="checkbox" />&nbsp;Use custom colors
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Custom color list</legend>
+
+        Insert list of custom HEX colors below. One color per line, including # prefix.
+        
+        <textarea id="pref_custom_colors"></textarea>
+    </fieldset>
+    <script src="/options.js"></script>
+</body>
+
+</html>

@@ -103,22 +103,92 @@ const ALL_THEMES_DARK_lighter = [       //unused
     new BasicColorThemeDark('#263341'),
     new BasicColorThemeDark('#3f313f'),
 ];
+var ALL_THEMES_CUSTOM;
+var CURRENT_THEME;
 
-//Check if CSS selector says preferred color scheme is dark
-function getDarkModeBool() {
-    if(window.matchMedia) {
-        var matchDarkMode = window.matchMedia('(prefers-color-scheme: dark)');
-        return matchDarkMode.matches;
+
+var settings = {};
+var useCustomColorsBool = 0;
+var useDarkModeBool = 0;
+var customColorsList = "";
+var customColorsArray = [];
+
+/*async*/ function getSettings() {
+    browser.storage.local.get('colorfulSettings').then(
+        function (item) {
+            settings = item;
+            console.log(item);
+        },
+        function (error) {
+            console.log(`Error: ${error}`);
+        }
+    )
+    //settings = await browser.storage.local.get('colorfulSettings');
+    
+    if ('colorfulSettings' in settings) {
+        useCustomColorsBool = settings.colorfulSettings.useCustomColors;
+        useDarkModeBool = settings.colorfulSettings.useDarkMode;
+        customColorsList = settings.colorfulSettings.customColors;
+        customColorsArray = customColorsList.split('\n').filter(element => element);
+    }
+    console.log("got settings");
+    console.log("useCustomColorsBool: " + useCustomColorsBool);
+    console.log("useDarkModeBool: " + useDarkModeBool);
+}
+
+/*function settingsChanged() {
+    console.log("settings changed");
+    //getSettings();
+    applyThemeToAllWindows();
+}*/
+
+
+
+/*async function makeTheme() {
+    getSettings().then(
+        function () {
+            makeTheme_subroutine();
+            return 1;
+        }
+    );
+}*/
+/*function makeTheme() {
+    console.log("inside makeTheme");
+    getSettings();
+    return makeTheme_subroutine();
+}*/
+
+function makeTheme() {
+    console.log("1 - inside makeTheme");
+    //getSettings();
+    setTimeout(getSettings, 1000);
+    console.log(settings);
+    if (useCustomColorsBool) {
+        if (useDarkModeBool) {
+            console.log("using custom colors dark mode");
+            ALL_THEMES_CUSTOM = [];
+            for (let i = 0; i < customColorsArray.length; i++) {
+                ALL_THEMES_CUSTOM[i] = new BasicColorThemeDark(customColorsArray[i]);
+            }
+        }else {
+            console.log("using custom colors");
+            ALL_THEMES_CUSTOM = [];
+            for (let i = 0; i < customColorsArray.length; i++) {
+                ALL_THEMES_CUSTOM[i] = new BasicColorTheme(customColorsArray[i]);
+            }
+        }
+        return [...ALL_THEMES_CUSTOM];
+    }else if (useDarkModeBool) {
+        console.log("using dark mode");
+        return [...ALL_THEMES_DARK];
+    }else {
+        console.log("using light mode");
+        return [...ALL_THEMES];
     }
 }
 
 function getNextTheme() {
-    let sortedThemes;
-    if(getDarkModeBool()) {
-        sortedThemes = [...ALL_THEMES_DARK];
-    }else {
-        sortedThemes = [...ALL_THEMES];
-    }
+    var sortedThemes = [...CURRENT_THEME];
     //sortedThemes = [...ALL_THEMES];
     sortedThemes.sort((a, b) => {
         if (a.usage == b.usage) {
@@ -130,7 +200,7 @@ function getNextTheme() {
 }
 
 function applyThemeToWindow(window) {
-    const newTheme = getNextTheme();
+    var newTheme = getNextTheme();
     browser.theme.update(window.id, newTheme.browserThemeObject);
 
     newTheme.usage += 1;
@@ -139,6 +209,8 @@ function applyThemeToWindow(window) {
 }
 
 async function applyThemeToAllWindows() {
+    CURRENT_THEME = makeTheme();
+    console.log("2 - after makeTheme");
     for (const window of await browser.windows.getAll()) {
         applyThemeToWindow(window);
     }
@@ -154,3 +226,4 @@ browser.windows.onCreated.addListener(applyThemeToWindow);
 browser.windows.onRemoved.addListener(freeThemeOfDestroyedWindow);
 browser.runtime.onStartup.addListener(applyThemeToAllWindows);
 browser.runtime.onInstalled.addListener(applyThemeToAllWindows);
+browser.storage.onChanged.addListener(applyThemeToAllWindows);
