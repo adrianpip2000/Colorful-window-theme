@@ -12,7 +12,7 @@ function validateHEXarray (inArray) {
 }
 
 
-async function saveOptions(e) {
+async function saveOptions(e, refreshFlipIn = false) {
     e.preventDefault();
     let customColorArray = document.querySelector('#pref_custom_colors').value.split('\n').filter(element => element);
     if (validateHEXarray(customColorArray)) {
@@ -22,6 +22,7 @@ async function saveOptions(e) {
                 useCustomColors: document.querySelector('#pref_use_custom_colors').checked,
                 useDarkMode: document.querySelector('#pref_use_darkmode').checked,
                 customColors: document.querySelector('#pref_custom_colors').value,
+                refreshFlip: refreshFlipIn,
             },
         });
     }else {
@@ -32,24 +33,22 @@ async function saveOptions(e) {
                 useCustomColors: document.querySelector('#pref_use_custom_colors').checked,
                 useDarkMode: document.querySelector('#pref_use_darkmode').checked,
                 //customColors: document.querySelector('#pref_custom_colors').value,
+                refreshFlip: refreshFlipIn,
             },
         });
-        console.log('Invalid HEX entered in custom color list!')
+        console.warn('Invalid HEX entered in custom color list!')
     }
     /*console.log(document.querySelector('#pref_use_custom_colors').checked);
     console.log(document.querySelector('#pref_use_darkmode').checked);
     console.log(document.querySelector('#pref_custom_colors').value.split('\n').filter(element => element));*/
-    console.log('saved settings');
+    //console.log('Saved settings');
 }
 
 
 async function restoreOptions() {
+    //e.preventDefault();
     let res = await browser.storage.local.get('colorfulSettings');
-    /*console.log(res.colorfulSettings.useCustomColors);
-    console.log(res.colorfulSettings.useDarkMode);
-    console.log(res.colorfulSettings.customColors);
-    console.log(res.colorfulSettings.customColors.split('\n'));*/
-    console.log('restored settings');
+    //console.log('Restored settings');
     document.querySelector('#pref_use_custom_colors').checked = res.colorfulSettings.useCustomColors || false;
     document.querySelector('#pref_use_darkmode').checked = res.colorfulSettings.useDarkMode || false;
     document.querySelector('#pref_custom_colors').value = res.colorfulSettings.customColors || '';
@@ -61,7 +60,20 @@ async function setDefaultOptions() {
             useCustomColors: false,
             useDarkMode: false,
             customColors: "",
+            refreshFlip: false,
         },
+    });
+}
+
+async function refreshSaveOptions(e) {
+    //e.preventDefault();
+    await browser.storage.local.get('colorfulSettings').then(async (items) => {
+        if ('refreshFlip' in items.colorfulSettings) {
+            await saveOptions(e,!items.colorfulSettings.refreshFlip);
+        }
+    })
+    .catch(error => {
+        console.error(`Error in refreshSaveOptions: ${error}`);
     });
 }
 
@@ -69,4 +81,5 @@ document.addEventListener('DOMContentLoaded', restoreOptions);
 document.querySelector('#pref_use_custom_colors').addEventListener('change', saveOptions);
 document.querySelector('#pref_use_darkmode').addEventListener('change', saveOptions);
 document.querySelector('#pref_custom_colors').addEventListener('blur', saveOptions);
-browser.runtime.onInstalled.addListener(setDefaultOptions);
+document.querySelector('#btn_refresh_colors').addEventListener('click', refreshSaveOptions);
+//browser.runtime.onInstalled.addListener(setDefaultOptions);

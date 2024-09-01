@@ -1,3 +1,7 @@
+const DEBUG = true;
+
+/*------------------------------------------------------------------------------*/
+
 class BasicColorTheme {
     constructor(frame, tab_background_text = '#111') {
         this.frame = frame;
@@ -106,85 +110,77 @@ const ALL_THEMES_DARK_lighter = [       //unused
 var ALL_THEMES_CUSTOM;
 var CURRENT_THEME;
 
-
 var settings = {};
 var useCustomColorsBool = 0;
 var useDarkModeBool = 0;
 var customColorsList = "";
 var customColorsArray = [];
 
-/*async*/ function getSettings() {
-    browser.storage.local.get('colorfulSettings').then(
-        function (item) {
-            settings = item;
-            console.log(item);
-        },
-        function (error) {
-            console.log(`Error: ${error}`);
-        }
-    )
-    //settings = await browser.storage.local.get('colorfulSettings');
-    
-    if ('colorfulSettings' in settings) {
+async function setDefaultSettings() {
+    settings = {};
+    useCustomColorsBool = 0;
+    useDarkModeBool = 0;
+    customColorsList = "";
+    customColorsArray = [];
+    const defaultSettings = {
+        useCustomColors: useCustomColorsBool,
+        useDarkMode: useDarkModeBool,
+        customColors: customColorsList
+    };
+    return browser.storage.local.set({colorfulSettings: defaultSettings});
+}
+
+async function getSettings() {
+    try {
+        let items = await browser.storage.local.get('colorfulSettings');
+        settings = items;
         useCustomColorsBool = settings.colorfulSettings.useCustomColors;
         useDarkModeBool = settings.colorfulSettings.useDarkMode;
         customColorsList = settings.colorfulSettings.customColors;
         customColorsArray = customColorsList.split('\n').filter(element => element);
+        return;
+    } catch (error) {
+        //console.warn(`Error in getSettings: ${error}`);
+        if(DEBUG){console.info('Previous settings not found. Attempting to set default settings.');}
+        try {
+            await setDefaultSettings();
+            if(DEBUG){console.info('Default settings were set.');}
+            browser.storage.onChanged.addListener(applyThemeToAllWindows);
+        } catch (errorSetDefaultSettings) {
+            console.error(`Error in setDefaultSettings: ${errorSetDefaultSettings}`);
+            throw errorSetDefaultSettings;
+        }
     }
-    console.log("got settings");
-    console.log("useCustomColorsBool: " + useCustomColorsBool);
-    console.log("useDarkModeBool: " + useDarkModeBool);
 }
 
-/*function settingsChanged() {
-    console.log("settings changed");
-    //getSettings();
-    applyThemeToAllWindows();
-}*/
-
-
-
-/*async function makeTheme() {
-    getSettings().then(
-        function () {
-            makeTheme_subroutine();
-            return 1;
-        }
-    );
-}*/
-/*function makeTheme() {
-    console.log("inside makeTheme");
-    getSettings();
-    return makeTheme_subroutine();
-}*/
-
-function makeTheme() {
-    console.log("1 - inside makeTheme");
-    //getSettings();
-    setTimeout(getSettings, 1000);
-    console.log(settings);
-    if (useCustomColorsBool) {
+async function makeTheme() {
+    if(DEBUG){console.debug("2 - inside makeTheme");}
+    await getSettings();
+    let numCustomColors = customColorsArray.length;
+    if ((useCustomColorsBool == true) && (numCustomColors != 0)) {
         if (useDarkModeBool) {
-            console.log("using custom colors dark mode");
+            if(DEBUG){console.log("Using custom colors dark mode");}
             ALL_THEMES_CUSTOM = [];
             for (let i = 0; i < customColorsArray.length; i++) {
                 ALL_THEMES_CUSTOM[i] = new BasicColorThemeDark(customColorsArray[i]);
             }
         }else {
-            console.log("using custom colors");
+            if(DEBUG){console.log("Using custom colors light mode");}
             ALL_THEMES_CUSTOM = [];
             for (let i = 0; i < customColorsArray.length; i++) {
                 ALL_THEMES_CUSTOM[i] = new BasicColorTheme(customColorsArray[i]);
             }
         }
-        return [...ALL_THEMES_CUSTOM];
+        CURRENT_THEME = [...ALL_THEMES_CUSTOM];
     }else if (useDarkModeBool) {
-        console.log("using dark mode");
-        return [...ALL_THEMES_DARK];
+        if(DEBUG){console.log("Using dark mode");}
+        CURRENT_THEME = [...ALL_THEMES_DARK];
     }else {
-        console.log("using light mode");
-        return [...ALL_THEMES];
+        if(DEBUG){console.log("Using light mode");}
+        CURRENT_THEME = [...ALL_THEMES];
     }
+    if(DEBUG){console.debug("3 - end of makeTheme");}
+    return CURRENT_THEME; //unused return, but it resolves promise upstream
 }
 
 function getNextTheme() {
@@ -209,8 +205,9 @@ function applyThemeToWindow(window) {
 }
 
 async function applyThemeToAllWindows() {
-    CURRENT_THEME = makeTheme();
-    console.log("2 - after makeTheme");
+    if(DEBUG){console.debug('1- before makeTheme');}
+    await makeTheme();
+    if(DEBUG){console.debug("4 - after makeTheme");}
     for (const window of await browser.windows.getAll()) {
         applyThemeToWindow(window);
     }
@@ -226,4 +223,4 @@ browser.windows.onCreated.addListener(applyThemeToWindow);
 browser.windows.onRemoved.addListener(freeThemeOfDestroyedWindow);
 browser.runtime.onStartup.addListener(applyThemeToAllWindows);
 browser.runtime.onInstalled.addListener(applyThemeToAllWindows);
-browser.storage.onChanged.addListener(applyThemeToAllWindows);
+// browser.storage.onChanged.addListener(applyThemeToAllWindows);
